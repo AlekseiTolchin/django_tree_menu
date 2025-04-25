@@ -61,7 +61,7 @@ class MenuItem(models.Model):
             try:
                 return reverse(self.named_url)
             except NoReverseMatch:
-                return '#'
+                return self.url or '#'
         return self.url or '#'
 
     def __str__(self):
