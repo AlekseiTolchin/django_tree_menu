@@ -15,3 +15,11 @@ class CatalogView(TemplateView):
 
 class ContactView(TemplateView):
     template_name = 'menu/contact.html'
+
+
+class PhonesView(TemplateView):
+    template_name = 'menu/phones.html'
+
+
+class TvsView(TemplateView):
+    template_name = 'menu/tvs.html'

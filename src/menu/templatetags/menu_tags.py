@@ -1,6 +1,5 @@
 from typing import List, Optional, Dict, Any, Set
 from django import template
-from django.http import HttpRequest
 
 from menu.models import MenuItem
 
@@ -53,24 +52,36 @@ def build_children_map(items: List[MenuItem]) -> Dict[Optional[int], List[MenuIt
         children_map.setdefault(item.parent_id, []).append(item)
     return children_map
 
+
 def build_nodes(
         parent_id: Optional[int],
         children_map: Dict[Optional[int], List[MenuItem]],
         active_item: Optional[MenuItem],
         expanded_ids: Set[int],
-        parent_is_active: bool = False
+        active_id: Optional[int],
+        level_under_active: int = None
 ) -> List[Dict[str, Any]]:
     """Рекурсивно построить дерево пунктов меню."""
     nodes = []
     for item in children_map.get(parent_id, []):
-        is_active = active_item and item.id == active_item.id
+        is_active = (active_item is not None) and (item.id == active_item.id)
         is_expanded = item.id in expanded_ids
-        if is_expanded or is_active or parent_is_active:
-            child_items = build_nodes(
-                item.id, children_map, active_item, expanded_ids, parent_is_active=is_active
-            )
-        else:
-            child_items = []
+        show_children = False
+        next_level_under_active = None
+
+        if is_expanded:
+            show_children = True
+            if is_active:
+                next_level_under_active = 1
+        elif level_under_active:
+            show_children = True
+            next_level_under_active = level_under_active - 1 if level_under_active > 0 else 0
+
+        child_items = build_nodes(
+            item.id, children_map, active_item, expanded_ids, active_id,
+            level_under_active=next_level_under_active
+        ) if show_children and (next_level_under_active is None or next_level_under_active > 0) else []
+
         node = {
             'item': item,
             'is_active': is_active,
@@ -79,39 +90,6 @@ def build_nodes(
         }
         nodes.append(node)
     return nodes
-
-
-# def build_nodes(
-#         parent_id: Optional[int],
-#         children_map: Dict[Optional[int], List[MenuItem]],
-#         active_item: Optional[MenuItem],
-#         expanded_ids: Set[int],
-#         parent_is_active: bool = False
-# ) -> List[Dict[str, Any]]:
-#     nodes = []
-#     for item in children_map.get(parent_id, []):
-#         is_active = active_item is not None and item.id == active_item.id
-#         is_expanded = (
-#                 item.id in expanded_ids
-#                 or (active_item is not None and item.parent_id == active_item.id)
-#         )
-#
-#         # Всегда строим все дочерние элементы
-#         child_items = build_nodes(
-#             item.id, children_map, active_item, expanded_ids, parent_is_active=is_active
-#         )
-#
-#         node = {
-#             'item': item,
-#             'is_active': is_active,
-#             'is_expanded': is_expanded,
-#             'child_items': child_items,
-#         }
-#         nodes.append(node)
-#     return nodes
-
-
-
 
 
 @register.inclusion_tag('menu/draw_menu.html', takes_context=True)
@@ -126,9 +104,12 @@ def draw_menu(context: Dict[str, Any], menu_title: str) -> Dict[str, Any]:
         }
     all_items = get_all_menu_items(menu_title)
     active_item = find_active_item(all_items, request.path)
+    active_id = active_item.id if active_item else None
     expanded_ids = get_expanded_ids(active_item) if active_item else set()
     children_map = build_children_map(all_items)
-    tree = build_nodes(None, children_map, active_item, expanded_ids, parent_is_active=False)
+    tree = build_nodes(
+        None, children_map, active_item, expanded_ids, active_id=active_id, level_under_active=None
+    )
 
     return {
         'menu_title': menu_title,
