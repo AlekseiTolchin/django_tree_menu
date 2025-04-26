@@ -1,6 +1,13 @@
 from django.urls import path
 
-from .views import IndexView, AboutView, CatalogView, ContactView, PhonesView, TvsView
+from .views import (
+    IndexView,
+    AboutView,
+    CatalogView,
+    ContactView,
+    PhonesView,
+    TvsView,
+)
 
 
 app_name = 'menu'

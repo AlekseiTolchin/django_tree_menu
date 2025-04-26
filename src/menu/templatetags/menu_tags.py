@@ -1,4 +1,5 @@
 from typing import List, Optional, Dict, Any, Set
+
 from django import template
 
 from menu.models import MenuItem
